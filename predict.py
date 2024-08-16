@@ -22,11 +22,20 @@ stock_collection = db['stock_prices']
 
 # Load Azure ML workspace
 try:
-    ws = Workspace.from_config()
+    subscription_id = os.environ["SUBSCRIPTION_ID"]
+    resource_group = os.environ["RESOURCE_GROUP"]
+    workspace_name = os.environ["WORKSPACE_NAME"]
+
+    ws = Workspace.get(
+        name=workspace_name,
+        subscription_id=subscription_id,
+        resource_group=resource_group
+    )
     print("Workspace configuration succeeded")
 except Exception as e:
     print(f"Error loading workspace configuration: {e}")
     raise
+
 
 # Load the model
 try:

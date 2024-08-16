@@ -26,10 +26,10 @@ try:
     resource_group = os.environ["RESOURCE_GROUP"]
     workspace_name = os.environ["WORKSPACE_NAME"]
 
-    ws = Workspace.get(
-        name=workspace_name,
+    ws = Workspace(
         subscription_id=subscription_id,
-        resource_group=resource_group
+        resource_group=resource_group,
+        workspace_name=workspace_name
     )
     print("Workspace configuration succeeded")
 except Exception as e:

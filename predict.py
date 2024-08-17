@@ -1,13 +1,16 @@
+import os
 from flask import Flask, request, jsonify
 from azureml.core import Workspace, Model
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from pymongo import MongoClient
-import os
 import mlflow
 import traceback
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__)
 
@@ -15,24 +18,15 @@ app = Flask(__name__)
 mongo_uri = os.getenv('MONGO_URI')
 client = MongoClient(mongo_uri)
 db = client.get_default_database()
-stock_collection = db['stock_prices']
+model_data_collection = db['model_ready_data']
 
 # Load Azure ML workspace
 try:
-    subscription_id = os.environ["SUBSCRIPTION_ID"]
-    resource_group = os.environ["RESOURCE_GROUP"]
-    workspace_name = os.environ["WORKSPACE_NAME"]
-
-    ws = Workspace(
-        subscription_id=subscription_id,
-        resource_group=resource_group,
-        workspace_name=workspace_name
-    )
+    ws = Workspace.from_config()
     print("Workspace configuration succeeded")
 except Exception as e:
     print(f"Error loading workspace configuration: {e}")
     raise
-
 
 # Load the model
 try:
@@ -47,57 +41,29 @@ except Exception as e:
     traceback.print_exc()
     raise
 
-def fetch_historical_data(ticker, days=30):
+def get_prediction_data(symbol, days=30):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days)
     
-    historical_data = list(stock_collection.find({
-        'metadata.symbol': ticker,
-        'metadata.timeframe': '1d',
-        'timestamp': {'$gte': start_date, '$lte': end_date}
-    }).sort('timestamp', 1))
-    
-    df = pd.DataFrame(historical_data)
-    df['Date'] = pd.to_datetime(df['timestamp']).dt.date
-    df.set_index('Date', inplace=True)
-    
-    column_mapping = {
-        'openPrice': 'Open',
-        'highPrice': 'High',
-        'lowPrice': 'Low',
-        'closePrice': 'Close',
-        'volume': 'Volume'
-    }
-    
-    df = df[[col for col in column_mapping.keys() if col in df.columns]]
-    df.rename(columns=column_mapping, inplace=True)
-    
-    return df
+    data = list(model_data_collection.find({
+        'Ticker': symbol,
+        'Date': {'$gte': start_date, '$lte': end_date}
+    }).sort('Date', 1))
 
-def calculate_features(df):
-    # Calculate RSI
-    delta = df['Close'].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-    rs = gain / loss
-    df['RSI'] = 100 - (100 / (1 + rs))
-
-    # Calculate MACD
-    exp1 = df['Close'].ewm(span=12, adjust=False).mean()
-    exp2 = df['Close'].ewm(span=26, adjust=False).mean()
-    df['MACD_12_26_9'] = exp1 - exp2
-    df['MACDh_12_26_9'] = df['MACD_12_26_9'] - df['MACD_12_26_9'].ewm(span=9, adjust=False).mean()
-    df['MACDs_12_26_9'] = df['MACD_12_26_9'].ewm(span=9, adjust=False).mean()
-
-    # Calculate Bollinger Bands
-    df['MA'] = df['Close'].rolling(window=20).mean()
-    df['BBM_20_2.0'] = df['MA']
-    rolling_std = df['Close'].rolling(window=20).std()
-    df['BBU_20_2.0'] = df['MA'] + (rolling_std * 2)
-    df['BBL_20_2.0'] = df['MA'] - (rolling_std * 2)
-    df['BBB_20_2.0'] = df['BBU_20_2.0'] - df['BBL_20_2.0']
-    df['BBP_20_2.0'] = (df['Close'] - df['BBL_20_2.0']) / (df['BBU_20_2.0'] - df['BBL_20_2.0'])
-
+    df = pd.DataFrame(data)
+    
+    if df.empty:
+        raise ValueError(f"No data available for {symbol} in the specified date range")
+    
+    # Ensure all required columns are present
+    required_columns = ['Date', 'Open', 'High', 'Low', 'Close', 'Volume', 'Ticker', 
+                        'RSI', 'MACD_12_26_9', 'MACDh_12_26_9', 'MACDs_12_26_9', 
+                        'BBL_20_2.0', 'BBM_20_2.0', 'BBU_20_2.0', 'BBB_20_2.0', 'BBP_20_2.0', 'MA']
+    
+    for col in required_columns:
+        if col not in df.columns:
+            df[col] = np.nan
+    
     return df
 
 @app.route('/predict', methods=['POST'])
@@ -106,52 +72,62 @@ def predict():
         data = request.json
         ticker = data['symbol']
         current_price = data['current_price']
-        prediction_days = data.get('prediction_days', 7)
+        prediction_days = data.get('prediction_days', 30)  # Default to 30 days
 
-        historical_data = fetch_historical_data(ticker)
-        prediction_data = historical_data.reset_index()
-        prediction_data['Ticker'] = ticker
-        prediction_data = calculate_features(prediction_data)
+        # Ensure prediction_days is one of the allowed values
+        allowed_days = [7, 14, 21, 28, 35, 42, 49, 56]
+        prediction_days = min(allowed_days, key=lambda x: abs(x - prediction_days))
+
+        print(f"Received request for {ticker}, current price: {current_price}, prediction days: {prediction_days}")
+
+        prediction_data = get_prediction_data(ticker, days=30)  # Fetch more data to ensure we have enough for predictions
         
-        required_columns = ['Date', 'Open', 'High', 'Low', 'Close', 'Volume', 'Ticker', 
-                            'RSI', 'MACD_12_26_9', 'MACDh_12_26_9', 'MACDs_12_26_9', 
-                            'BBM_20_2.0', 'BBU_20_2.0', 'BBL_20_2.0', 'BBB_20_2.0', 'BBP_20_2.0', 'MA']
-        for col in required_columns:
-            if col not in prediction_data.columns:
-                prediction_data[col] = 0
+        print(f"Prediction data shape: {prediction_data.shape}")
+        print(f"Prediction data columns: {prediction_data.columns}")
+        print(f"Prediction data head:\n{prediction_data.head()}")
+        print(f"Prediction data tail:\n{prediction_data.tail()}")
 
         predictions = loaded_model.predict(prediction_data)
         
+        print(f"Raw predictions: {predictions}")
+
         forecast_dates = [datetime.now().date() + timedelta(days=i) for i in range(1, prediction_days + 1)]
-        processed_predictions = [
-            {
-                'date': date.strftime('%Y-%m-%d'),
-                'predicted_close': float(predictions[i]),
-                'action': 'buy' if predictions[i] > current_price else 'sell' if predictions[i] < current_price else 'hold'
-            }
-            for i, date in enumerate(forecast_dates)
-        ]
         
-        actual_values = historical_data['Close'].values[-prediction_days:]
-        predicted_values = predictions[:prediction_days]
-        mae = mean_absolute_error(actual_values, predicted_values)
-        mse = mean_squared_error(actual_values, predicted_values)
-        rmse = np.sqrt(mse)
-        r2 = r2_score(actual_values, predicted_values)
+        processed_predictions = []
+        for i in range(0, prediction_days, 7):
+            week_predictions = predictions[i:i+7]
+            week_dates = forecast_dates[i:i+7]
+            
+            min_price = min(week_predictions)
+            max_price = max(week_predictions)
+            
+            for j, (date, price) in enumerate(zip(week_dates, week_predictions)):
+                if j < len(week_predictions):  # Ensure we don't go out of bounds
+                    if price == min_price:
+                        action = 'buy'
+                    elif price == max_price:
+                        action = 'sell'
+                    else:
+                        action = 'hold'
+                    
+                    processed_predictions.append({
+                        'date': date.strftime('%Y-%m-%d'),
+                        'predicted_close': float(price),
+                        'action': action
+                    })
+
+        # Calculate overall trend
+        overall_trend = 'upward' if predictions[prediction_days - 1] > predictions[0] else 'downward'
         
         response = {
             'symbol': ticker,
             'current_price': current_price,
             'predictions': processed_predictions,
-            'performance_metrics': {
-                'MAE': mae,
-                'MSE': mse,
-                'RMSE': rmse,
-                'R2': r2
-            }
+            'overall_trend': overall_trend
         }
         
         return jsonify(response)
+
     except Exception as e:
         print(f"Error during prediction: {str(e)}")
         print("Traceback:")
@@ -159,4 +135,4 @@ def predict():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(port=5000)
+    app.run(debug=True, port=5000)

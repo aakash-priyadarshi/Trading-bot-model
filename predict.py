@@ -6,11 +6,8 @@ from datetime import datetime, timedelta
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from pymongo import MongoClient
 import os
-from dotenv import load_dotenv
 import mlflow
 import traceback
-
-load_dotenv()
 
 app = Flask(__name__)
 

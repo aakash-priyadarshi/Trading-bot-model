@@ -1,3 +1,4 @@
+#data_handler.py
 import os
 from datetime import datetime, timedelta
 import yfinance as yf
@@ -52,6 +53,10 @@ def update_database():
     start_date = '2019-01-01'
     end_date = datetime.now().strftime('%Y-%m-%d')
 
+    # Clear the existing data in the collection
+    model_data_collection.delete_many({})
+    print("Cleared existing data from the database.")
+
     for ticker in tickers:
         # Check if we have data for this ticker
         existing_data = model_data_collection.find_one({'Ticker': ticker})
@@ -73,6 +78,9 @@ def update_database():
             print(f"Updated data for {ticker} from {start_date} to {end_date}")
         else:
             print(f"Data for {ticker} is already up to date")
+
+def ensure_data_is_updated():
+    update_database()            
 
 if __name__ == "__main__":
     update_database()

@@ -36,4 +36,120 @@ For a complete setup of the AI Trading Bot, you'll need to clone and configure b
 
 - Stock price prediction using Azure ML
 - Data preparation and feature engineering
--
+- API endpoint for retrieving predictions
+- Integration with MongoDB for storing prepared data
+- Automated data updates and model retraining
+
+## 🛠️ Tech Stack
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python"/>
+  <img src="https://img.shields.io/badge/Flask-000000?style=for-the-badge&logo=flask&logoColor=white" alt="Flask"/>
+  <img src="https://img.shields.io/badge/Azure_ML-0089D6?style=for-the-badge&logo=microsoft-azure&logoColor=white" alt="Azure ML"/>
+  <img src="https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB"/>
+  <img src="https://img.shields.io/badge/pandas-150458?style=for-the-badge&logo=pandas&logoColor=white" alt="Pandas"/>
+</p>
+
+## 📋 Prerequisites
+
+- Python 3.8 or later
+- Azure ML workspace
+- MongoDB
+
+## 🚀 Setup
+
+1. Clone the repository:
+   ```
+   git clone https://github.com/aakash-priyadarshi/Trading-bot-model.git
+   cd Trading-bot-model
+   ```
+
+2. Create a virtual environment and activate it:
+   ```
+   python -m venv venv
+   source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+   ```
+
+3. Install dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+
+4. Set up environment variables:
+   Create a `.env` file in the root directory and add the following:
+   ```
+   MONGO_URI=your_mongodb_connection_string
+   AZURE_ML_WORKSPACE_NAME=your_workspace_name
+   AZURE_ML_SUBSCRIPTION_ID=your_subscription_id
+   AZURE_ML_RESOURCE_GROUP=your_resource_group
+   ```
+
+5. Configure Azure ML:
+   Make sure you have the Azure ML workspace configuration file (`config.json`) in the root directory.
+
+6. Start the Flask application:
+   ```
+   python predict.py
+   ```
+
+The server will start on `http://localhost:5000`.
+
+## 📁 Project Structure
+
+```
+ml_service/
+├── data_handler.py
+├── predict.py
+├── requirements.txt
+├── config.json
+└── .env
+```
+
+## 🔄 API Endpoints
+
+- `/predict` (POST): Get stock price predictions
+
+  Request body:
+  ```json
+  {
+    "symbol": "AAPL",
+    "current_price": 150.75,
+    "prediction_days": 7
+  }
+  ```
+
+## 📊 Data Preparation
+
+The `data_handler.py` script fetches historical stock data, calculates technical indicators, and stores the prepared data in MongoDB. Run this script periodically to keep the data up-to-date:
+
+```
+python data_handler.py
+```
+
+## 🧠 Model Information
+
+The machine learning model used in this service is a Time Series Prophet model trained on Azure ML. The model is loaded from the Azure ML workspace and used for making predictions.
+
+## 🔗 Integration with Frontend/Backend
+
+To integrate this ML service with the frontend and backend components, ensure that the `ML_SERVICE_URL` environment variable in the [ai-trading-bot](https://github.com/aakash-priyadarshi/ai-trading-bot) repository is set to the URL where this Flask application is running.
+
+## 🤝 Contributing
+
+We welcome contributions to the AI Trading Bot project! Please see our [Contributing Guide](CONTRIBUTING.md) for more details on how to get started.
+
+## 💖 Sponsor
+
+If you find this project helpful, consider buying me a coffee!
+
+<a href="https://www.buymeacoffee.com/aakashm30" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+
+## 📞 Contact
+
+For any queries or suggestions, feel free to reach out:
+
+<a href="https://linktr.ee/aakashPriyadarshi" target="_blank"><img src="https://img.shields.io/badge/linktree-39E09B?style=for-the-badge&logo=linktree&logoColor=white" alt="Linktree"/></a>
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.

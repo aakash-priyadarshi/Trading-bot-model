@@ -17,6 +17,8 @@
   <img src="https://your-image-hosting-service.com/ai-trading-bot-ml-demo.gif" alt="AI Trading Bot ML Demo" width="600"/>
 </p>
 
+> **Note**: The AI Trading Bot logo and demo images used in this README are AI-generated and the exclusive property of Aakash Priyadarshi. These images may not be used, reproduced, or distributed without explicit permission from the owner.
+
 This repository contains the machine learning service component of the AI Trading Bot project. It provides stock price predictions using Azure Machine Learning and handles data preparation for the model.
 
 ## 🔗 Related Repositories
@@ -153,3 +155,9 @@ For any queries or suggestions, feel free to reach out:
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+
+### © Image Usage Rights
+
+The AI-generated images used in this project, including the AI Trading Bot logo and demo images, are the exclusive property of Aakash Priyadarshi. These images are protected by copyright and may not be used, reproduced, modified, or distributed without explicit written permission from the owner.
+
+For inquiries about using these images, please contact Aakash Priyadarshi through the provided Linktree contact link.

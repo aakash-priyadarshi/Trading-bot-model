@@ -1,7 +1,7 @@
 # AI Trading Bot - Machine Learning Service
 
 <p align="center">
-  <img src="https://your-image-hosting-service.com/ai-trading-bot-ml-logo.png" alt="AI Trading Bot ML Logo" width="200"/>
+  <img src="trading-bot.webp" alt="AI Trading Bot ML Logo" width="200"/>
 </p>
 
 <p align="center">
